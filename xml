@@ -1,0 +1,596 @@
+[HttpPost("add-books-from-xml")]
+public async Task<IActionResult> AddBooksFromXml()
+{
+    // Create the XML data
+    var bookstore = new Bookstore
+    {
+        Books = new List<Book>
+        {
+            new Book
+            {
+                Category = "Children",
+                Title = "The Cat in the Hat",
+                Author = "Dr. Seuss",
+                Year = 1957,
+                Price = 7.95m
+            },
+            new Book
+            {
+                Category = "Cooking",
+                Title = "The Joy of Cooking",
+                Author = "Irma S. Rombauer",
+                Year = 1931,
+                Price = 27.99m
+            }
+        }
+    };
+    var serializer = new XmlSerializer(typeof(Bookstore));
+    using var writer = new StringWriter();
+    serializer.Serialize(writer, bookstore);
+    var xml = writer.ToString();
+
+    // Send the XML data to the AddBooks action method
+    using var client = new HttpClient();
+    var content = new StringContent(xml, Encoding.UTF8, "application/xml");
+    var response = await client.PostAsync("https://example.com/api/books", content);
+
+    // Return the response from the AddBooks action method
+    var responseContent = await response.Content.ReadAsStringAsync();
+    return Content(responseContent, "application/xml");
+}
+
+
+[HttpGet("get-books")]
+public async Task<IActionResult> GetBooks()
+{
+    // Send a request to get the XML data
+    using var client = new HttpClient();
+    var response = await client.GetAsync("https://example.com/api/books");
+
+    // Deserialize the XML response into an object
+    var serializer = new XmlSerializer(typeof(Bookstore));
+    using var stream = await response.Content.ReadAsStreamAsync();
+    var bookstore = (Bookstore)serializer.Deserialize(stream);
+
+    // Return the object as JSON data
+    return Json(bookstore.Books);
+}
+
+
+[HttpGet("get-book-titles")]
+public IActionResult GetBookTitles()
+{
+    // Load the XML document
+    var xml = "<bookstore><book><title>The Cat in the Hat</title><author>Dr. Seuss</author></book><book><title>The Joy of Cooking</title><author>Irma S. Rombauer</author></book></bookstore>";
+    var document = XDocument.Parse(xml);
+
+    // Get the titles of all the books
+    var titles = document.Descendants("book").Select(b => (string)b.Element("title")).ToList();
+
+    // Return the titles as JSON data
+    return Json(titles);
+}
+
+[HttpGet("get-item-names-and-prices")]
+public IActionResult GetItemNamesAndPrices()
+{
+    // Load the XML document
+    var xml = "<items><item><name>Widget</name><price>2.99</price></item><item><name>Gadget</name><price>9.99</price></item></items>";
+    var document = XDocument.Parse(xml);
+
+    // Get the names and prices of all the items
+    var items = document.Descendants("item").Select(item => new
+    {
+        Name = (string)item.Element("name"),
+        Price = (decimal)item.Element("price")
+    }).ToList();
+
+    // Return the items as JSON data
+    return Json(items);
+}
+
+
+[HttpGet("get-item-names-and-prices")]
+public IActionResult GetItemNamesAndPrices()
+{
+    // Load the JSON data
+    var json = "[{\"name\":\"Widget\",\"price\":2.99,\"details\":{\"color\":\"blue\",\"weight\":1.2}},{\"name\":\"Gadget\",\"price\":9.99,\"details\":{\"color\":\"red\",\"weight\":0.8}}]";
+    var items = JsonSerializer.Deserialize<List<Item>>(json);
+
+    // Return the items as JSON data
+    return Json(items);
+}
+
+public class Item
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public ItemDetails Details { get; set; }
+}
+
+public class ItemDetails
+{
+    public string Color { get; set; }
+    public decimal Weight { get; set; }
+}
+
+[HttpGet("convert-xml-to-json")]
+public IActionResult ConvertXmlToJson()
+{
+    // Load the XML document
+    var xml = "<item><name>Widget</name><price>2.99</price></item>";
+    var document = XDocument.Parse(xml);
+
+    // Convert the XML to JSON
+    var json = JsonConvert.SerializeXNode(document);
+
+    // Return the JSON data
+    return Content(json, "application/json");
+}
+
+[HttpGet("convert-json-to-xml")]
+public IActionResult ConvertJsonToXml()
+{
+    // Load the JSON object
+    var json = "{\"item\":{\"name\":\"Widget\",\"price\":2.99}}";
+    var item = JsonSerializer.Deserialize<Item>(json);
+
+    // Convert the object to XML
+    var serializer = new XmlSerializer(typeof(Item));
+    var xml = new StringWriter();
+    serializer.Serialize(xml, item);
+
+    // Return the XML data
+    return Content(xml.ToString(), "application/xml");
+}
+
+public class Item
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+
+[HttpGet("compare-xml-documents")]
+public IActionResult CompareXmlDocuments()
+{
+    // Load the first XML document
+    var xml1 = "<item><name>Widget</name><price>2.99</price></item>";
+    var document1 = XDocument.Parse(xml1);
+
+    // Load the second XML document
+    var xml2 = "<item><name>Widget</name><price>2.99</price></item>";
+    var document2 = XDocument.Parse(xml2);
+
+    // Compare the XML documents
+    if (XNode.DeepEquals(document1, document2))
+    {
+        return Ok("The documents are equal");
+    }
+    else
+    {
+        return BadRequest("The documents are not equal");
+    }
+}
+
+[HttpGet("compare-json-objects")]
+public IActionResult CompareJsonObjects()
+{
+    // Load the first JSON object
+    var json1 = "{\"name\":\"Widget\",\"price\":2.99}";
+    var obj1 = JObject.Parse(json1);
+
+    // Load the second JSON object
+    var json2 = "{\"name\":\"Widget\",\"price\":2.99}";
+    var obj2 = JObject.Parse(json2);
+
+    // Compare the JSON objects
+    if (JToken.DeepEquals(obj1, obj2))
+    {
+        return Ok("The objects are equal");
+    }
+    else
+    {
+        return BadRequest("The objects are not equal");
+    }
+}
+
+[HttpGet("compare-complex-json-xml")]
+public IActionResult CompareComplexJsonXml()
+{
+    // Load the JSON data
+    var json = "{\"id\": 1, \"name\": \"John Doe\", \"age\": 30, \"address\": { \"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\" }}";
+    var jsonDoc = JObject.Parse(json);
+
+    // Load the XML data
+    var xml = "<person id=\"1\"><name>John Doe</name><age>30</age><address><street>123 Main St</street><city>Anytown</city><state>CA</state><zip>12345</zip></address></person>";
+    var xmlDoc = XDocument.Parse(xml);
+
+    // Get the values from the JSON and XML documents
+    var jsonId = jsonDoc.GetValue("id").ToString();
+    var jsonName = jsonDoc.GetValue("name").ToString();
+    var jsonAge = jsonDoc.GetValue("age").ToString();
+    var jsonStreet = jsonDoc.SelectToken("address.street").ToString();
+    var jsonCity = jsonDoc.SelectToken("address.city").ToString();
+    var jsonState = jsonDoc.SelectToken("address.state").ToString();
+    var jsonZip = jsonDoc.SelectToken("address.zip").ToString();
+
+    var xmlId = xmlDoc.Descendants("person").Attributes("id").FirstOrDefault()?.Value;
+    var xmlName = xmlDoc.Descendants("name").FirstOrDefault()?.Value;
+    var xmlAge = xmlDoc.Descendants("age").FirstOrDefault()?.Value;
+    var xmlStreet = xmlDoc.Descendants("street").FirstOrDefault()?.Value;
+    var xmlCity = xmlDoc.Descendants("city").FirstOrDefault()?.Value;
+    var xmlState = xmlDoc.Descendants("state").FirstOrDefault()?.Value;
+    var xmlZip = xmlDoc.Descendants("zip").FirstOrDefault()?.Value;
+
+    // Compare the values
+    if (jsonId == xmlId && jsonName == xmlName && jsonAge == xmlAge && jsonStreet == xmlStreet && jsonCity == xmlCity && jsonState == xmlState && jsonZip == xmlZip)
+    {
+        return Ok("The JSON and XML data match");
+    }
+    else
+    {
+        return BadRequest("The JSON and XML data do not match");
+    }
+}
+public class Person
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+    public string Address { get; set; }
+
+    public override bool Equals(object obj)
+    {
+        if (obj == null || GetType() != obj.GetType())
+        {
+            return false;
+        }
+
+        Person other = (Person)obj;
+
+        return Name == other.Name && Age == other.Age && Address == other.Address;
+    }
+
+    // Other methods and properties for the Person class...
+}
+
+// Example usage:
+
+Person person1 = new Person { Name = "Alice", Age = 30, Address = "123 Main St" };
+Person person2 = new Person { Name = "Alice", Age = 30, Address = "456 Second St" };
+
+if (person1.Equals(person2))
+{
+    Console.WriteLine("The two people are equal.");
+}
+else
+{
+    Console.WriteLine("The two people are not equal.");
+}
+List<Person> list1 = new List<Person>
+{
+    new Person { Name = "Alice", Age = 30, Address = "123 Main St" },
+    new Person { Name = "Bob", Age = 25, Address = "456 Second St" }
+};
+
+List<Person> list2 = new List<Person>
+{
+    new Person { Name = "Alice", Age = 30, Address = "123 Main St" },
+    new Person { Name = "Bob", Age = 25, Address = "456 Second St" }
+};
+
+bool areListsEqual = list1.SequenceEqual(list2);
+
+if (areListsEqual)
+{
+    Console.WriteLine("The two lists are equal.");
+}
+else
+{
+    Console.WriteLine("The two lists are not equal.");
+}
+
+
+string[] array1 = { "apple", "banana", "cherry" };
+string[] array2 = { "apple", "banana", "cherry" };
+
+bool areArraysEqual = array1.SequenceEqual(array2);
+
+if (areArraysEqual)
+{
+    Console.WriteLine("The two
+
+
+
+
+
+import axios from 'axios';
+
+const handleFileUpload = async (files) => {
+  const url = 'https://example.com/api/files/upload';
+
+  const formData = new FormData();
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+
+  const response = await axios.post(url, formData, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+
+  console.log(response.data);
+}
+
+
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class FilesController : ControllerBase
+{
+    private readonly ApplicationDbContext _context;
+
+    public FilesController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpPost("upload")]
+    public async Task<IActionResult> UploadFiles(List<IFormFile> files)
+    {
+        try
+        {
+            foreach (var file in files)
+            {
+                var fileData = new FileData
+                {
+                    FileName = file.FileName,
+                    ContentType = file.ContentType
+                };
+
+                using (var stream = new MemoryStream())
+                {
+                    await file.CopyToAsync(stream);
+                    fileData.Data = stream.ToArray();
+                }
+
+                _context.FileData.Add(fileData);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Files uploaded successfully.");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("download")]
+    public async Task<IActionResult> DownloadFiles()
+    {
+        try
+        {
+            var fileDatas = await _context.FileData.ToListAsync();
+
+            foreach (var fileData in fileDatas)
+            {
+                var contentDisposition = new ContentDisposition
+                {
+                    FileName = fileData.FileName,
+                    Inline = false
+                };
+                Response.Headers.Add("Content-Disposition", contentDisposition.ToString());
+                Response.ContentType = fileData.ContentType;
+                Response.Body.Write(fileData.Data, 0, fileData.Data.Length);
+                await Response.Body.FlushAsync();
+            }
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+}
+
+
+
+[HttpPost]
+[Authorize]
+public async Task<IActionResult> UploadFiles(List<IFormFile> files)
+{
+  try
+  {
+    foreach (var file in files)
+    {
+      // Save file to database
+      var fileData = new FileData
+      {
+        Name = file.FileName,
+        Content = file.OpenReadStream().ReadAllBytes(),
+      };
+      _context.FileData.Add(fileData);
+      await _context.SaveChangesAsync();
+
+      // Save file to local drive
+      var filePath = Path.Combine(_hostingEnvironment.ContentRootPath, "uploads", file.FileName);
+      using var stream = new FileStream(filePath, FileMode.Create);
+      await file.CopyToAsync(stream);
+    }
+    return Ok();
+  }
+  catch (Exception ex)
+  {
+    return StatusCode(StatusCodes.Status500InternalServerError, ex);
+  }
+}
+
+[HttpGet("files/{fileName}")]
+public IActionResult DownloadFile(string fileName)
+{
+    var file = _fileService.GetFileFromLocalDrive(fileName);
+
+    if (file != null)
+    {
+        return File(file, "application/octet-stream", fileName);
+    }
+
+    return NotFound();
+}
+
+
+const handleFileDownload = async (fileName) => {
+  try {
+    const response = await fetch(`/api/files/${fileName}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+
+[HttpGet("files/download")]
+public IActionResult DownloadFiles(List<string> fileNames)
+{
+    var files = new List<FileStream>();
+
+    foreach (var fileName in fileNames)
+    {
+        var file = _fileService.GetFileFromLocalDrive(fileName);
+
+        if (file != null)
+        {
+            files.Add(new FileStream(fileName, FileMode.Create));
+            files[files.Count - 1].Write(file, 0, file.Length);
+        }
+    }
+
+    if (files.Count > 0)
+    {
+        var zipFileName = $"{Guid.NewGuid()}.zip";
+        var zipFilePath = Path.Combine(Path.GetTempPath(), zipFileName);
+
+        using (var zipArchive = ZipFile.Open(zipFilePath, ZipArchiveMode.Create))
+        {
+            foreach (var file in files)
+            {
+                var zipEntry = zipArchive.CreateEntry(file.Name, CompressionLevel.Fastest);
+                using (var entryStream = zipEntry.Open())
+                {
+                    file.CopyTo(entryStream);
+                }
+            }
+        }
+
+        var zipFileStream = new FileStream(zipFilePath, FileMode.Open);
+        return File(zipFileStream, "application/zip", zipFileName);
+    }
+
+    return NotFound();
+}
+
+
+const handleFileDownload = async (fileNames) => {
+  try {
+    const response = await fetch(`/api/files/download?fileNames=${fileNames.join(',')}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'files.zip';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+
+
+
+const handleFileUpload = async (event) => {
+  const file = event.target.files[0];
+
+  // Validate file type
+  const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+  if (!allowedTypes.includes(file.type)) {
+    console.error('Invalid file type');
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    // Handle response
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+
+
+[HttpPost("files/upload")]
+public async Task<IActionResult> UploadFiles(IFormFile file)
+{
+    if (file != null)
+    {
+        var allowedTypes = new List<string> { "application/pdf", "image/png", "image/jpeg" };
+        if (!allowedTypes.Contains(file.ContentType))
+        {
+            return BadRequest("Invalid file type");
+        }
+
+        var fileName = Path.GetFileName(file.FileName);
+        var filePath = Path.Combine(_fileService.GetLocalDrivePath(), fileName);
+
+        using (var fileStream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(fileStream);
+        }
+
+        // Save file to database
+
+        return Ok();
+    }
+
+    return BadRequest("No file was uploaded");
+}
+
+
+
+
+
+
+
+
